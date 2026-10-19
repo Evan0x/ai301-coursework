@@ -59,6 +59,8 @@ one in the week it belongs to.
 
 [2-4 sentences: what you built (the scout, your strategy), what broke
 or fell short, what changed because of it.]
+- Unit 5: Configured the `issue-scout` skill with custom Java and Python web repositories and refined search strategies using GitHub CLI.
+- Successfully set up the scout environment, tested queries via `gh search issues`, and identified candidate issues like [Remove deprecated custom date format configuration](https://github.com/Apicurio/apicurio-registry/issues/7329) for future contribution.
 
 **Unit 6: [one line on the tool work]**
 
