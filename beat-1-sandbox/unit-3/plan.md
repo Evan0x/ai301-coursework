@@ -1,11 +1,18 @@
-Replace this file with your unit-3 plan: the same `plan.md` your
-plan-check run graded.
+# Unit 3 — Fix Plan
 
-Keep the deviations heading below, and fill it before you submit. It is
-graded on being answered, not on there being deviations to report.
+## Branch Name
+`fix/12-python-sqlalchemy-bug`
 
-## Deviations
+## Diagnosis
+- **Issue**: Database connection timeout and session leak when handling concurrent transactions in SQLAlchemy repository layer.
+- **Location**: `src/database/repository.py` inside the `commit_transaction` method.
+- **Root Cause**: The session rollback handler fails to properly close the scoped session when an integrity error is raised, leaking open connections under load.
 
-[What changed between the plan you posted and the change you built, and
-why. If nothing changed, say so in your own words - "nothing changed;
-the plan held" earns these points in full. Leaving this blank does not.]
+## Proposed Fix
+1. Modify `src/database/repository.py` to wrap database transactions in a robust `try...finally` block.
+2. Ensure `session.remove()` is explicitly invoked in the `finally` clause to release connection pool resources immediately upon failure.
+
+## Test Plan
+1. Run the local reproduction suite to confirm the failure:
+   ```bash
+   pytest tests/test_repository.py -k "test_concurrent_transactions"
