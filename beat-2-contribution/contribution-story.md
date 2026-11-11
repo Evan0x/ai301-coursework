@@ -54,7 +54,7 @@ Under high concurrency, database sessions fail to release properly when a rollba
 
 **Expected Behavior**
 
-The session should always return to the connection pool in a `finally` block regardless of transaction success or failure.
+The session should always return to the connection pool in a finally block regardless of transaction success or failure.
 
 **Current Behavior**
 
