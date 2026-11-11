@@ -1,6 +1,5 @@
 # Unit 3 — Fix Plan
 
-## Branch Name
 `fix/12-python-sqlalchemy-bug`
 
 ## Diagnosis
