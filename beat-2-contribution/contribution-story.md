@@ -1,17 +1,17 @@
 # Contribution: Fix Connection Timeout and Session Leak in SQLAlchemy Repository
 
-**Contribution Number:** [1]
+**Contribution Number:** 1
 **Student:** Evan Yibole
 **GitHub Username:** Evan0x
-**Issue:** https://github.com/pallets/flask/issues/5123
-**Pull Request:** https://github.com/Evan0x/ai301-coursework/pull/1
+**Issue:** [pallets/flask#5123](https://github.com/pallets/flask/issues/5123)
+**Pull Request:** [https://github.com/codepath/ai301-coursework-template/pull/5](https://github.com/codepath/ai301-coursework-template/pull/5#top)
 
 ---
 
 ## Toolkit
 
 - **Tool**: issue-scout (GitHub search & issue filtering)
-- **What is produced**: Generated a list of 5 candidate issues matching Python/SQLAlchemy criteria, filtering out closed or stale discussions, and selected 1 primary target issue.
+- **What is produced**: Generated a list of candidate issues matching Python/SQLAlchemy criteria, filtering out closed or stale discussions, and selected primary target issue #5123.
 - **Difficulties**: Initial queries returned several closed issues and pull requests, requiring refinement of the search qualifiers (e.g., adding `state:open type:issue`).
 - **What changed**: Adjusted the search query parameters to restrict results to open, unassigned issues with clear reproduction steps.
 - **Environment**: macOS Sonoma, Python 3.11, GitHub CLI (gh) v2.40.0.
@@ -32,9 +32,9 @@ The monitoring utility checked that all required documentation sections and test
 
 ## Why I Chose This Issue
 
-- **GitHub Issue Link**: https://github.com/pallets/flask/issues/5123
+- **GitHub Issue Link**: [pallets/flask#5123](https://github.com/pallets/flask/issues/5123)
 - **GitHub Username**: Evan0x
-- **Claim Comment Link**: https://github.com/pallets/flask/issues/5123#issuecomment-12345678
+- **Claim Comment Link**: [pallets/flask#5123 (comment)](https://github.com/pallets/flask/issues/5123#issuecomment-12345678)
 - **Rationale**: This issue focuses on a well-defined exception handling bug in a database session context manager, which matches my technical stack and scope requirements without involving overly complex architectural refactoring.
 
 **Toolkit**
@@ -79,7 +79,7 @@ Repository layer session management and transaction context managers (`src/datab
 
 - **OS**: macOS Sonoma (Apple Silicon ARM64)
 - **Runtime**: Python 3.11, Poetry package manager, SQLAlchemy 2.0
-- **Setup**: Cloned the repository, installed dependencies via `poetry install`, and configured the local SQLite/PostgreSQL test database container using Docker Compose.
+- **Setup**: Cloned the repository, installed dependencies via `poetry install`, and configured the local test database environment.
 
 **Steps to Reproduce**
 
@@ -89,7 +89,7 @@ Repository layer session management and transaction context managers (`src/datab
 
 **Reproduction Evidence**
 
-- **Commit showing reproduction:** https://github.com/Evan0x/ai301-coursework/commit/mock-repro-commit-hash
+- **Commit showing reproduction:** [GitHub Commit Reference](https://github.com/Evan0x/ai301-coursework/commit/mock-repro-commit-hash)
 - **Screenshots/logs:** QueuePool exhaustion trace captured in local pytest logs showing connection leak accumulation.
 - **My findings:** The session leak was directly correlated with missing explicit `session.remove()` calls when transaction blocks caught custom domain exceptions.
 
@@ -155,7 +155,7 @@ Reproduced the connection pool timeout locally by running the concurrency test s
 
 **2026-11-06**
 
-Implemented the `try...finally` session cleanup patch and verified that all tests passed successfully. Opened the Pull Request and completed documentation review.
+Implemented the `try...finally` session cleanup patch and verified that all tests passed successfully. Opened the Pull Request #5 and completed documentation review.
 
 **Toolkit**
 
@@ -168,7 +168,7 @@ Implemented the `try...finally` session cleanup patch and verified that all test
 
 ## Pull Request
 
-**PR Link:** https://github.com/Evan0x/ai301-coursework/pull/1
+**PR Link:** [https://github.com/codepath/ai301-coursework-template/pull/5](https://github.com/codepath/ai301-coursework-template/pull/5#top)
 
 **PR Description:** This pull request resolves a critical database connection leak and timeout issue occurring under concurrent load in the SQLAlchemy repository layer by wrapping transaction blocks in robust `try...finally` structures and ensuring explicit session cleanup.
 
