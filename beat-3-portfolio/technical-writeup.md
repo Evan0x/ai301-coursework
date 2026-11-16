@@ -17,3 +17,38 @@ def test_app_context_teardown_leak(app):
         raise RuntimeError("Simulated context crash")
     # Assert connection was closed
     assert conn.closed == True
+```
+
+Running pytest confirmed that conn.closed remained False on context exit, leaving dangling sockets open:
+```
+FAILED tests/test_appctx.py::test_app_context_teardown_leak - AssertionError: assert False == True
+```
+
+In my initial fix attempt, I attempted to catch exceptions directly inside the context manager and force a manual connection close:
+```
+# First Attempt
+try:
+    do_teardown()
+except Exception as e:
+    close_db_connection()
+    raise e
+```
+
+However, after running local tests and configuring voice-guard to verify error-handling standards, I realized that custom exception handling swallowed secondary teardown callbacks if multiple exceptions occurred in the stack.
+
+I updated the implementation to a robust try...finally block that guarantees teardown callbacks execute regardless of nested exception types:
+```
+# Revised Fix
+def pop(self, exc=Reraise):
+    try:
+        self.do_teardown(exc)
+    finally:
+        self._clear_app_context()
+```
+
+Rerunning the test suite passed cleanly across all python environments. After pushing the patch to my branch and opening the pull request, local CI runs passed completely and maintainers confirmed reproduction and fix validity.
+
+## Limitations and what's next
+While this patch cleanly ensures connection teardown upon unhandled exceptions in single-threaded contexts, it does not currently handle asynchronous context switching (asyncio) context variables introduced in newer Python versions.
+
+Next, I plan to extend the teardown hooks to support Python's contextvars module so async Flask extensions (such as Quart or Flask async handlers) benefit from the same deterministic teardown guarantee.
