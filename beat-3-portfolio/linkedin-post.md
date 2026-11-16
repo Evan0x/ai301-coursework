@@ -1,6 +1,8 @@
 ---
 
-### File 2: `beat-3-portfolio/linkedin-post.md`
+### 2. `beat-3-portfolio/linkedin-post.md`
+
+Replace all contents in `beat-3-portfolio/linkedin-post.md` with this text:
 
 ```markdown
 Over the past few weeks, I investigated and patched a resource leak in Flask (Issue #5123) where database connections remained open during application context crashes. 
