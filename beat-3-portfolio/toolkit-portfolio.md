@@ -27,92 +27,82 @@ as a deleted answer.
 the unused `[Tool name]` entry stub, its copy-me sentence, and the prompt sentences under
 each header. A leftover bracketed prompt reads as unfilled.
 
-**Student:** [Student name]
+**Student:** Fnu Yibole
 
 ## Featured Tools
 
-Three or four tools, presented in depth. Open with a few sentences
-on why you chose these.
-
-Full credit asks the featured set to show real change: **at least two** of your featured
-entries should show a tool that visibly moved through use. An honest entry for a tool that
-barely changed — saying so, dating what did happen, and giving the reason — earns the solid
-middle tier and never fails you.
-
-Each tool's honest limit is not written here. It goes in the tool-limits list at the
-bottom of this page, one line per featured tool, so that the limits sit together and can be
-read as a set.
-
-[Why these tools, in your own words.]
+I picked these tools because they show how I went from throwing loose prompts at an AI to actually scoping a real bug in ArduPlane, testing it in simulation, and keeping my diff clean enough for an upstream PR.
 
 Copy the entry shape below once per featured tool and fill it there.
 
-**[Tool name]**
+**Claude Code CLI**
 
-**What it is, and the judgment hole I wrote:** [what the tool does,
-and the part of it that is your judgment: the rubric, strategy,
-guide, manifest, or playbook you wrote.]
+**What it is, and the judgment hole I wrote:** t's a CLI coding agent running right in my terminal, and my judgment hole was enforcing AGENTS.md rules up front—read-only checks first, no guessing on flight-safety behavior, single-subsystem edits (ArduPlane/), and no unrequested cleanup or noisy comments.
 
-**How it evolved, dated:** [the changes that made it yours, each
-with its date and the friction that drove it; your weekly Toolkit
-entries are the source.]
+**How it evolved, dated:** 
+November 18, 2026: Started with a narrow ABORT_LANDING check in ArduPlane/fence.cpp, then had Claude Code trace in_fence_recovery() and Mode::enter() for manual mode overrides during a landing fence breach (#5544). When it suggested changing fence_stickmixing(), I told it to drop that and keep the patch strictly to in_fence_recovery().
 
-**Evidence:** [show, don't claim: an output excerpt, a before/after
-pair, or a dated commit reference, inline here. Draw it from your real
-term work where you can - a catch this tool actually made, a
-before/after from your own repo or PR - which is graded separately from
-whether an artifact is present at all. A short, telling excerpt beats a
-pasted transcript.]
+
+**ArduPilot Autotest & SITL Harness**
+
+**What it is, and the judgment hole I wrote:** It's ArduPilot's SITL simulator and Python test runner (autotest.py / sim_vehicle.py), and my judgment hole was picking the right flight edge cases—go-arounds and manual mode overrides past the 10-second manual_recovery window—and mapping them to specific test commands.
+
+**How it evolved, dated:** 
+November 18, 2026: Ran FenceMinAltAutoEnableAbort and the fence test suite after the ABORT_LANDING edit, then ran a SITL check switching to MANUAL / FBWA during a landing fence breach past 15 seconds to verify RTL didn't keep taking control back.
+
+
+**Evidence:** Ran Tools/autotest/autotest.py build.Plane test.Plane.FenceMinAltAutoEnableAbort locally and had it pass, alongside a 15-second manual-override check in SITL (sim_vehicle.py -v ArduPlane).
+
+**ArduPilot Branch Convention Checker**
+
+**What it is, and the judgment hole I wrote:** It's ArduPilot's check_branch_conventions.py script that checks commit style, subsystem boundaries, and formatting, and my judgment hole was running it as a mandatory check on fix/your-issue-name so edits stayed strictly inside ArduPlane/.
+
+**How it evolved, dated:** 
+November 18, 2026: Kept both commits (14d196b and b2699a7) inside ArduPlane/ with Plane: prefixes and verified convention compliance before opening PR #35259.
+
+**Evidence:** python3 Tools/scripts/check_branch_conventions.py passed cleanly on fix/your-issue-name before opening PR #35259.
 
 ## Inventory
 
-One line each for the rest of the toolkit: what it is and where it
-stands (one bullet per tool; a compact sentence or two is fine).
+Claude Code CLI: Terminal coding agent used to inspect fence.cpp, mode.cpp, and system.cpp and write minimal patches.
 
-- [Tool name: one line.]
+check_branch_conventions.py: Repo check script used to verify single-subsystem scope and commit formatting.
+
+./waf: Build tool used to configure --board sitl and build ArduPlane.
+
+autotest.py: Test runner used for automated Fence* test cases like FenceMinAltAutoEnableAbort.
+
+sim_vehicle.py: SITL runner used to test manual mode switches during landing fence breaches.
+
+issue-scout: Custom skill used to inspect issue context and reproduction details.
+
+repro-check: Custom skill used to check local reproduction steps before editing code.
+
+ship-gate: Custom skill used to double-check diffs, tests, and AI disclosure before submitting a PR.
 
 ## The Arc
 
-The story of the toolkit in order: friction, change, result, dated.
-Your weekly Toolkit entries are the source; read your own record and
-tell it oldest first.
-
-Write one block per beat, in the shape below, oldest first. Keep all four labels on every
-beat, each on its own line. The `Result:` line is what the beat was for: it says what
-happened *after* the change, which is not the same sentence as the change itself. If a beat
-never reached a result, write `Result: none` — an honest beat that did not land still counts
-fully as a beat.
-
-Full credit asks for **at least two** beats whose `Result:` line names something that
-actually happened afterwards. A beat about something that did not work counts fully as a
-beat, and when the work happened never moves this score.
-
 **Beat 1**
-Date: [a date, or a month and year]
-Friction: [what was going wrong, and how you noticed]
-Change: [what you changed because of it]
-Result: [what happened afterwards, or the word none]
+Date: October 2026
+Friction: Early AI-assisted edits were too broad and crossed subsystem boundaries that ArduPilot doesn't want mixed in one change.
+Change: Started forcing AGENTS.md rules and single-subsystem limits into my Claude Code prompts before editing files.
+Result: Diffs got way smaller and stopped tripping repo convention checks.
 
 **Beat 2**
-Date: [a date, or a month and year]
-Friction: [what was going wrong, and how you noticed]
-Change: [what you changed because of it]
-Result: [what happened afterwards, or the word none]
+Date: November 2026
+Friction: A proposed fix for geofence landing recovery included extra changes to fence_stickmixing() that weren't actually needed for manual modes.
+Change: Cut fence_stickmixing() out of the patch and kept the change focused on landing_or_landed and in_fence_recovery() in ArduPlane/fence.cpp.
+Result: Pushed two clean commits (14d196b and b2699a7) and opened PR #35259 on ArduPilot/ardupilot.
 
 Copy the beat shape above for as many beats as your term had.
 
 ## Limitations and What's Next
 
-What the toolkit as a whole still does not do, and what you would
-build or change next. Write this section last; it will be better
-after the rest.
+The setup still relies on me manually triggering SITL scenarios and reading through the state transitions myself, and next I want to add a dedicated automated test case in Tools/autotest/arduplane.py for manual mode overrides during a landing fence breach.
 
-[The honest limits, and what comes next, in your own sentences.]
+**Tool limits.** 
 
-**Tool limits.** One line per featured tool, in the same order as the entries above, naming
-where that tool still stops or what it still gets wrong. A small honest limit is full credit;
-"none really" is not a limit. If a tool genuinely has none you can name, write `none` after
-its label rather than deleting the line.
-
-issue-scout: [where this tool still stops, in plain words, or the word none]
-[tool name]: [where this tool still stops, in plain words, or the word none]
+issue-scout: gets stuck when an issue doesn't have clear reproduction steps or the discussion is all over the place.
+Claude Code CLI: can still suggest extra edits outside the tightest spot unless I explicitly rein it in.
+ArduPilot Autotest & SITL Harness: won't catch real hardware quirks like actual sensor noise or physical board timing bugs.
+ArduPilot Branch Convention Checker: checks repo and commit rules, not whether the flight control logic is actually sound in the air.
