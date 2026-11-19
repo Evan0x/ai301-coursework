@@ -8,8 +8,6 @@ Path: `beat-3-portfolio/toolkit-portfolio.md`
 
 I picked these tools because they show how I went from throwing loose prompts at an AI to actually scoping a real bug in ArduPlane, testing it in simulation, and keeping my diff clean enough for an upstream PR.
 
-Copy the entry shape below once per featured tool and fill it there.
-
 **Claude Code CLI**
 
 **What it is, and the judgment hole I wrote:** t's a CLI coding agent running right in my terminal, and my judgment hole was enforcing AGENTS.md rules up front—read-only checks first, no guessing on flight-safety behavior, single-subsystem edits (ArduPlane/), and no unrequested cleanup or noisy comments.
