@@ -1,209 +1,92 @@
-# Contribution: Fix Connection Timeout and Session Leak in SQLAlchemy Repository
+# Contribution: Fix Manual Mode Override During Landing Fence Breach in ArduPlane
 
-**Contribution Number:** 1
-**Student:** Evan Yibole
-**GitHub Username:** Evan0x
-**Issue:** [pallets/flask#5123](https://github.com/pallets/flask/issues/5123)
-**Pull Request:** [https://github.com/codepath/ai301-coursework-template/pull/5](https://github.com/codepath/ai301-coursework-template/pull/5#top)
-
----
+*Contribution Number:* 1
+*Student:* Fnu Yibole
+*GitHub Username:* Evan0x
+*Issue:* [ArduPilot Issue #5544](https://github.com/ArduPilot/ardupilot/issues/5544)
+*Pull Request:* [ArduPilot PR #35259](https://github.com/ArduPilot/ardupilot/pull/35259)
 
 ## Toolkit
 
-- **Tool**: issue-scout (GitHub search & issue filtering)
-- **What is produced**: Generated a list of candidate issues matching Python/SQLAlchemy criteria, filtering out closed or stale discussions, and selected primary target issue #5123.
-- **Difficulties**: Initial queries returned several closed issues and pull requests, requiring refinement of the search qualifiers (e.g., adding `state:open type:issue`).
-- **What changed**: Adjusted the search query parameters to restrict results to open, unassigned issues with clear reproduction steps.
-- **Environment**: macOS Sonoma, Python 3.11, GitHub CLI (gh) v2.40.0.
+- **Tool:** `issue-scout` (`gh search issues` and Claude Code skill)
+- **What it produced:** Filtered open repository issues and surfaced landing fence / mode override context around issue `#5544`, helping evaluate scope and reproduction details before editing code.
+- **Difficulties:** Initial broad queries returned noisy or loosely related issues and lacked clear reproduction steps for edge-case mode transitions during landing fence breaches.
+- **What changed:** Tightened search qualifiers (`--state open`, `--limit 100`) and paired `issue-scout` with manual code tracing in `ArduPlane/fence.cpp` and `ArduPlane/mode.cpp` rather than relying on search summaries alone.
 
-**Unit 5: Configured the `issue-scout` skill with custom Python web repositories and refined search strategies using GitHub CLI.**
-Successfully set up the scout environment, tested queries via `gh search issues`, and identified candidate issues like Flask issue #5123 to assess maintainer activity, scope clarity, and merge risks. Initial queries returned many closed items, which prompted the addition of strict state filters.
+### Weekly Tooling Log (Units 5–8)
 
-**Unit 6: Implemented voice-guard and repo-memory tracking for local architectural context.**
-Maintained local repository memory files to track session boundaries and exception handling patterns. Nothing broke during this phase; the structured notes successfully prevented scope creep when isolating the database connection leak.
-
-**Unit 7: Deployed ship-gate and validated local test suites on the feature branch.**
-The ship-gate manifest checked test coverage and verified that the concurrency patch cleanly passed local pytest runs without triggering connection limit warnings.
-
-**Unit 8: Executed PR-monitor review checks and finalized the documentation playbook.**
-The monitoring utility checked that all required documentation sections and test assertions were in place before marking the contribution ready for final review.
-
----
+- **Unit 5 — `issue-scout`:** Configured `issue-scout` with target language/project filters and `gh search issues` queries (`--state open`, `--limit 100`) to find candidate issues. Early queries returned closed items and issues missing concrete reproduction steps, so I refined the query flags and verified candidates directly against the codebase before committing to `#5544`.
+- **Unit 6 — `repro-check` & Repository Context Tracing (`AGENTS.md` / `fence.cpp` / `mode.cpp`):** Checked local reproduction paths and traced `in_fence_recovery()` and `Mode::enter()` for manual mode overrides during a landing fence breach. An early `ABORT_LANDING` edit only addressed go-around suppression and did not stop pilots from being forced back into RTL past the 10-second `manual_recovery` window, so I expanded tracing to `pilot_override` handling on `RC_COMMAND` and `GCS_COMMAND` when `previous_mode_reason == FENCE_BREACHED`.
+- **Unit 7 — `ship-gate` & Local SITL / Autotest Harness (`autotest.py`, `sim_vehicle.py`, `./waf`):** Ran `Tools/autotest/autotest.py build.Plane test.Plane.FenceMinAltAutoEnableAbort` and SITL checks via `sim_vehicle.py -v ArduPlane` switching to `MANUAL` / `FBWA` past 15 seconds. A draft change touching `fence_stickmixing()` added unnecessary diff outside the recovery path, so I removed it and kept changes strictly inside `ArduPlane/fence.cpp`.
+- **Unit 8 — `check_branch_conventions.py` & `ship-gate` Pre-PR Check:** Ran `python3 Tools/scripts/check_branch_conventions.py` on the fix branch and verified commits (`14d196b` and `b2699a7`) followed `ArduPlane/` subsystem boundaries and commit conventions before opening PR `#35259`.
 
 ## Why I Chose This Issue
 
-- **GitHub Issue Link**: [pallets/flask#5123](https://github.com/pallets/flask/issues/5123)
-- **GitHub Username**: Evan0x
-- **Claim Comment Link**: [pallets/flask#5123 (comment)](https://github.com/pallets/flask/issues/5123#issuecomment-12345678)
-- **Rationale**: This issue focuses on a well-defined exception handling bug in a database session context manager, which matches my technical stack and scope requirements without involving overly complex architectural refactoring.
-
-**Toolkit**
-
-- Tool: issue-scout (GitHub search & issue filtering)
-- What it produced: Scanned open Flask repository issues, evaluated maintainer response times, and validated that issue #5123 was unassigned and had clear reproduction criteria.
-- Difficulties: Some matching issues lacked minimal reproduction scripts, making initial validation difficult until filtering for issues with attached code snippets.
-- What changed: Prioritized issues containing reproducible code blocks and explicit stack traces.
-
----
+- **GitHub Issue Link:** [ArduPilot Issue #5544](https://github.com/ArduPilot/ardupilot/issues/5544)
+- **GitHub Username:** Evan0x
+- **Claim Comment Link:** [Claim Comment on Issue #5544](https://github.com/ArduPilot/ardupilot/issues/5544)
+- **Rationale:** Issue `#5544` targets a concrete flight-mode / fence-recovery behavior in `ArduPlane` where I could trace the exact state transitions (`in_fence_recovery()` and `Mode::enter()`) and validate the fix deterministically in SITL and `autotest.py` without overhauling unrelated subsystems.
 
 ## Understanding the Issue
 
-**Problem Description**
-
-Under high concurrency, database sessions fail to release properly when a rollback exception occurs.
-
-**Expected Behavior**
-
-The session should always return to the connection pool in a finally block regardless of transaction success or failure.
-
-**Current Behavior**
-
-Unhandled rollbacks cause connection leaks and eventually lead to a `TimeoutError`.
-
-**Affected Components**
-
-Repository layer session management and transaction context managers (`src/database/repository.py`).
-
-**Toolkit**
-
-- Tool: custom log analysis and static issue assessment
-- What it produced: Mapped the exact trace from the connection pool exhaustion to the unhandled rollback exception path.
-- Difficulties: Tracing asynchronous worker threads under high mock load required careful log inspection.
-- What changed: Added detailed transaction boundary logging during local debugging.
-
----
+- **Problem Description:** During a landing fence breach in `ArduPlane`, switching to a manual mode past the recovery window can still result in unintended RTL takeback or incomplete recovery handling rather than honoring pilot mode overrides cleanly.
+- **Expected Behavior:** When a pilot switches to a manual mode (`MANUAL` / `FBWA`) during a landing fence breach—including past the 10-second manual recovery window—pilot override commands (`RC_COMMAND` / `GCS_COMMAND` when `previous_mode_reason == FENCE_BREACHED`) should be respected without unintended RTL reversion.
+- **Current Behavior:** Initial handling only checked go-around / abort conditions or allowed recovery logic to pull control back toward RTL after the 10-second recovery window when switching to manual modes.
+- **Affected Components:** `ArduPlane/fence.cpp` (`in_fence_recovery()`), alongside `Mode::enter()` mode-transition state in `ArduPlane`.
 
 ## Reproduction Process
 
-**Environment Setup**
+### Environment Setup
 
-- **OS**: macOS Sonoma (Apple Silicon ARM64)
-- **Runtime**: Python 3.11, Poetry package manager, SQLAlchemy 2.0
-- **Setup**: Cloned the repository, installed dependencies via `poetry install`, and configured the local test database environment.
+- **OS:** macOS (Apple Silicon / ARM64)
+- **Runtime & Toolchain:** Python 3, `./waf` build system, `sim_vehicle.py`, `Tools/autotest/autotest.py`, `Tools/scripts/check_branch_conventions.py`, Git, and GitHub CLI (`gh`)
+- **Setup:** Built `ArduPlane` for SITL (`./waf configure --board sitl` / `autotest.py build.Plane`) in a local clone of `ArduPilot/ardupilot`.
 
-**Steps to Reproduce**
+### Steps to Reproduce
 
-1. Install project dependencies and configure the test environment.
-2. Run the concurrency test suite: `pytest tests/test_repository.py -k "test_concurrent_transactions"`
-3. Observe the `sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached` failure under load.
+1. Configure and build `ArduPlane` in the local `ArduPilot/ardupilot` repository.
+2. Run `Tools/autotest/autotest.py build.Plane test.Plane.FenceMinAltAutoEnableAbort` to check baseline landing fence abort behavior.
+3. Launch SITL with `sim_vehicle.py -v ArduPlane`, trigger a landing fence breach scenario, and switch to a manual mode (`MANUAL` or `FBWA`) holding past the 10-second recovery window (testing beyond 15 seconds).
 
-**Reproduction Evidence**
+### Reproduction Evidence
 
-- **Commit showing reproduction:** [GitHub Commit Reference](https://github.com/Evan0x/ai301-coursework/commit/mock-repro-commit-hash)
-- **Screenshots/logs:** QueuePool exhaustion trace captured in local pytest logs showing connection leak accumulation.
-- **My findings:** The session leak was directly correlated with missing explicit `session.remove()` calls when transaction blocks caught custom domain exceptions.
-
-**Toolkit**
-
-- Tool: pytest execution runner & GitHub CLI
-- What it produced: Exact failure traceback confirming the connection pool timeout.
-- Difficulties: Local database connection limits had to be artificially lowered to reproduce the race condition quickly.
-- What changed: Adjusted pool size parameters in test configuration to trigger the leak within 5 concurrent requests.
-
----
+- **Commit Reference:** Commits `14d196b` and `b2699a7` on the feature branch in `ArduPilot/ardupilot`
+- **Observed Behavior:** Tracing `in_fence_recovery()` and `Mode::enter()` showed that handling `ABORT_LANDING` alone did not cover manual mode overrides past the 10-second `manual_recovery` window, and early drafts that touched `fence_stickmixing()` introduced extra diff outside `in_fence_recovery()`.
 
 ## Solution Approach
 
-**Analysis**
-
-The root cause of the connection leak is the absence of an unconditional cleanup block in the session lifecycle manager when database rollbacks raise secondary exceptions.
-
-**Proposed Solution**
-
-Wrap the transaction execution blocks in robust `try...finally` structures and explicitly invoke `session.remove()` to ensure immediate resource release. We are deliberately avoiding a full overhaul of the connection pooling strategy to keep the patch focused and low-risk.
-
-**Implementation Plan**
-
-1. Modify `src/database/repository.py` to wrap transaction execution in `try...finally`.
-2. Add explicit session cleanup and rollback safeguards in the exception handler.
-3. Update and run test suites to verify fix stability.
-
-**Toolkit**
-
-- Tool: Claude Code & Python refactoring assistant
-- What it produced: Clean patch diff introducing the `try...finally` safety net.
-- Difficulties: Ensuring that nested transaction saves and rollbacks did not conflict with the outer cleanup block.
-- What changed: Consolidated session teardown logic into a single dedicated helper method.
-
----
+- **Analysis:** Traced `in_fence_recovery()` and `Mode::enter()` in `ArduPlane` to see how fence breach recovery interacts with manual mode selection and `previous_mode_reason == FENCE_BREACHED`. An initial `ABORT_LANDING` check was too narrow, and `fence_stickmixing()` was unnecessary for the manual-mode override path.
+- **Proposed Solution:** Handle `pilot_override` for `RC_COMMAND` and `GCS_COMMAND` when `previous_mode_reason == FENCE_BREACHED` inside `in_fence_recovery()` in `ArduPlane/fence.cpp`, while dropping unrequested edits to `fence_stickmixing()`.
+- **Implementation Plan:**
+  1. Inspect `in_fence_recovery()`, `Mode::enter()`, and `AGENTS.md` repository rules in `ArduPlane`.
+  2. Implement the scoped `pilot_override` logic in `ArduPlane/fence.cpp` and remove any unrelated `fence_stickmixing()` changes.
+  3. Validate with `autotest.py`, `sim_vehicle.py -v ArduPlane`, and `check_branch_conventions.py` before opening PR `#35259`.
 
 ## Testing Strategy
 
-The fix is validated by re-running the concurrency test suite before and after the change to ensure all connections return cleanly within 0.5 seconds without pool exhaustion.
-
-- **Before Fix**: `pytest tests/test_repository.py -k "test_concurrent_transactions"` resulted in `sqlalchemy.exc.TimeoutError`.
-- **After Fix**: Re-running the identical test command yields `PASSED tests/test_repository.py::test_concurrent_transactions - 1 passed in 0.42s`.
-
-**Toolkit**
-
-- Tool: pytest test runner
-- What it produced: Green test execution confirming zero connection leaks under concurrency.
-- Difficulties: Managing test state isolation between concurrent worker threads.
-- What changed: Added fixture-level database teardown hooks between test cases.
-
----
+- **Observable Checks:**
+  - Ran `Tools/autotest/autotest.py build.Plane test.Plane.FenceMinAltAutoEnableAbort` locally and verified it passed.
+  - Ran SITL via `sim_vehicle.py -v ArduPlane` and tested switching to `MANUAL` and `FBWA` during a landing fence breach past 15 seconds to confirm RTL did not keep taking control back.
+  - Ran `python3 Tools/scripts/check_branch_conventions.py` on the fix branch to confirm commit messages and subsystem scope (`ArduPlane/`) passed before opening PR `#35259`.
 
 ## Implementation Notes
 
-**2026-11-01**
-
-Initialized the repository and ran initial issue scouting using `issue-scout` to select Flask issue #5123. Configured local Python environment and verified dependency installation via Poetry.
-
-**2026-11-03**
-
-Reproduced the connection pool timeout locally by running the concurrency test suite with restricted pool limits. Mapped the unhandled rollback exception path in `src/database/repository.py`.
-
-**2026-11-06**
-
-Implemented the `try...finally` session cleanup patch and verified that all tests passed successfully. Opened the Pull Request #5 and completed documentation review.
-
-**Toolkit**
-
-- Tool: Git version control & GitHub CLI
-- What it produced: Version-controlled commits and a clean feature branch.
-- Difficulties: Resolving minor formatting warnings in markdown logs.
-- What changed: Adopted strict template adherence for all milestone logs.
-
----
+- **2026-11-10:** Traced `in_fence_recovery()` and `Mode::enter()` for manual mode overrides during a landing fence breach (`#5544`), dropped an unrequested `fence_stickmixing()` edit to keep changes focused in `ArduPlane/fence.cpp`, committed `14d196b` and `b2699a7`, passed `autotest.py` (`FenceMinAltAutoEnableAbort`), SITL manual-mode checks past 15 seconds, and `check_branch_conventions.py`, and opened PR `#35259`.
 
 ## Pull Request
 
-**PR Link:** [https://github.com/codepath/ai301-coursework-template/pull/5](https://github.com/codepath/ai301-coursework-template/pull/5#top)
-
-**PR Description:** This pull request resolves a critical database connection leak and timeout issue occurring under concurrent load in the SQLAlchemy repository layer by wrapping transaction blocks in robust `try...finally` structures and ensuring explicit session cleanup.
-
-**Maintainer Feedback:**
-
-- 2026-11-07: Awaiting review / No changes requested yet.
-
-**Status:** Awaiting review
-
-**Toolkit**
-
-- Tool: GitHub Pull Request interface & GitHub CLI (`gh pr create`)
-- What it produced: Fully documented PR linking the issue, reproduction evidence, and verification test logs.
-- Difficulties: Ensuring all required issue templates and checklist items were fully satisfied.
-- What changed: Added explicit test execution commands and before/after metrics to the PR description.
-
----
+- **PR Link:** [ArduPilot PR #35259](https://github.com/ArduPilot/ardupilot/pull/35259)
+- **PR Description:** Addresses landing fence breach recovery in `ArduPlane/fence.cpp` (`in_fence_recovery()`) for issue `#5544` so manual mode overrides (`RC_COMMAND` / `GCS_COMMAND` with `previous_mode_reason == FENCE_BREACHED`) are handled cleanly past the recovery window without extraneous changes to `fence_stickmixing()`. **AI Disclosure:** Used Claude Code CLI and custom skills (`issue-scout`, `repro-check`, `ship-gate`) to assist with code inspection, diff/convention checks, and drafting; all edits, SITL/autotest runs, and final diff reviews were verified manually.
+- **Evidence:** `Tools/autotest/autotest.py build.Plane test.Plane.FenceMinAltAutoEnableAbort` passed locally; SITL check (`sim_vehicle.py -v ArduPlane`) verified `MANUAL` / `FBWA` behavior past 15 seconds during a landing fence breach; `python3 Tools/scripts/check_branch_conventions.py` passed with changes scoped to `ArduPlane/fence.cpp` (commits `14d196b` and `b2699a7`).
+- **Maintainer Feedback & Status:** Opened PR `#35259` on `ArduPilot/ardupilot` following local convention and simulation checks.
 
 ## Learnings and Reflections
 
-**Technical Skills Gained**
-
-Learned advanced SQLAlchemy session lifecycle management, connection pool troubleshooting under concurrent load, and structured bug reproduction using isolated pytest fixtures.
-
-**Challenges Overcome**
-
-Successfully diagnosed an intermittent race condition by artificially constraining database connection pool limits to reliably trigger and observe connection leaks locally.
-
-**What I'd Do Differently Next Time**
-
-Establish stricter telemetry and logging around database transaction boundaries earlier in the debugging process to pinpoint exception paths faster.
-
----
+- **Technical Skills Gained:** Tracing state transitions across `in_fence_recovery()` and `Mode::enter()` in `ArduPlane`, running SITL (`sim_vehicle.py`) and `autotest.py` checks, and enforcing repository rules via `check_branch_conventions.py`.
+- **Challenges Overcome:** Moving past a narrow `ABORT_LANDING` check to cover manual mode overrides past the 10-second recovery window, and cutting unrequested edits like `fence_stickmixing()` so the diff stayed minimal and single-subsystem (`ArduPlane/`).
+- **What I'd Do Differently Next Time:** Add an automated test case in `Tools/autotest/arduplane.py` covering manual mode overrides during a landing fence breach so the scenario is covered automatically alongside manual SITL runs.
 
 ## Resources Used
 
-- [SQLAlchemy Session Basics Documentation](https://docs.sqlalchemy.org/en/20/orm/session_basics.html)
-- [Flask GitHub Issue #5123 Discussion Thread](https://github.com/pallets/flask/issues/5123)
+- [CodePath AI301 Grading Rubrics](https://courses.codepath.org/courses/ai301)
+- [CodePath AI301 Submission Guide](https://courses.codepath.org/courses/ai301)
